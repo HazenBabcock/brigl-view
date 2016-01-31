@@ -11,6 +11,48 @@ var BRIGLV = BRIGLV || {
     REVISION: '1'
 };
 
+function modelLoadGroupsSteps(model, callback, current_group, current_step) {
+    BRIGLV.log("loading " + current_group + " " + current_step);
+	
+    // Check if we have loaded everything.
+    if (current_group < 0){
+	BRIGLV.log("loading complete " + typeof(callback));
+	callback(model.groups[0].steps[0].getMesh());
+    }
+    else {
+	// Figure out next group and step.
+	next_group = current_group;
+	next_step = current_step - 1;
+	if (next_step < 0){
+	    next_group -= 1;
+	    if (next_group >= 0){
+		next_step = model.groups[next_group].getNumberSteps() - 1;
+	    }
+	}
+
+	// Get current group and step objects.
+	group = model.groups[current_group];
+	step = group.steps[current_step];
+	if (current_step == 0){
+	    partName = group.group_name;
+	}
+	else {
+	    partName = group.group_name + "_" + current_step;
+	}
+	
+	// Create the mesh for the current group and step using BRIGL.
+	BRIGLV.log("loading " + partName)
+	model.brigl_builder.loadModelByData(partName,
+					    step.data,
+					    model.mesh_options,
+					    function(mesh){
+						step.setMesh(mesh);
+						modelLoadGroupsSteps(model, callback, next_group, next_step);
+					    });
+    }
+}
+
+
 function splitLines(modelData){
     var lines = modelData.split("\n");
     
@@ -23,13 +65,14 @@ function splitLines(modelData){
 
 
 BRIGLV.log = function(msg){
-    console.info(msg);
+    console.info("BV " + msg);
 }
 
 
 // A single step in the model.
 BRIGLV.Step = function(){
-    this.lines = [];
+    this.data = "";
+    this.mesh = undefined;
 }
 
 BRIGLV.Step.prototype = {
@@ -37,7 +80,16 @@ BRIGLV.Step.prototype = {
     constructor: BRIGLV.Step,
 
     addLine: function(line){
-	this.lines.push(line);
+	this.data = this.data + "\n" + line;
+    },
+
+    getMesh: function(){
+	return this.mesh;
+    },
+    
+    setMesh: function(mesh){
+	BRIGLV.log("setting mesh");
+	this.mesh = mesh;
     }
 }
 
@@ -61,6 +113,10 @@ BRIGLV.Group.prototype = {
 	else {
 	    this.cur_step.addLine(line);
 	}
+    },
+
+    getNumberSteps: function(){
+	return this.steps.length;
     }
 }
 
@@ -68,16 +124,23 @@ BRIGLV.Group.prototype = {
 // The whole model.
 BRIGLV.Model = function(options){
     this.brigl_builder = new BRIGL.Builder("parts/", options);
+    this.errorCallback = undefined;
+    this.finishedLoadingCallback = undefined;
     this.groups = [];
+    this.mesh_options = {};
 }
 
 BRIGLV.Model.prototype = {
 
     constructor: BRIGLV.Model,
+	
+    loadModel: function(modelData, mesh_options, callback, errorCallback) {
+	this.errorCallback = errorCallback;
+	this.finishedLoadingCallback = callback;
+	this.mesh_options = mesh_options;
 
-    loadModel: function(modelData) {
+	// Read in the model, creating separate objects for each group and step.
 	var lines = modelData.split("\n");
-
 	for (var i = 0; i < lines.length; i++){
 	    var li = lines[i].trim();
 	    if (li === '') continue;
@@ -91,9 +154,12 @@ BRIGLV.Model.prototype = {
 	    }
 	}
 
-	for (var i = 0; i < this.groups.length; i++){
-	    BRIGLV.log(this.groups[i].group_name + " has " + this.groups[i].steps.length + " steps");
-	}
+	// Load the model.
+	start_group = this.groups.length - 1;
+	modelLoadGroupsSteps(this,
+			     callback,
+			     start_group,
+			     this.groups[start_group].getNumberSteps() - 1);
     },
 
     reset: function(){
