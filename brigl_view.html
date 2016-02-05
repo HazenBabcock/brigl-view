@@ -19,24 +19,29 @@
   
   <script>
    var builder;
-   var briglContainer;
+   var briglv_container;
+   var cur_step;
+   var have_model;
    var logarea;
+   var max_step;
+   var model;
    
    function init(){
        if ( ! Detector.webgl ) { alert("no webgl"); return; }
 
+       have_model = false;
+       max_step = 0;
+       
        model = new BRIGLV.Model();
-       briglContainer = new BRIGL.BriglContainer(document.getElementById("container"));
+       briglv_container = new BRIGLV.Container(document.getElementById("container"));
        
        logarea = document.getElementById("log");
-       log = function(msg){
-	   logarea.textContent = msg;
-       }
-       /*
        BRIGL.log = function(msg){
-  	  logarea.textContent = msg;
+  	   logarea.textContent = "BRIGL: " + msg;
        }
-       */
+       BRIGLV.log = function(msg){
+  	   logarea.textContent = "BRIGL-View: " + msg;
+       }
    }
 
    function handleError(msg)
@@ -53,20 +58,27 @@
 	   model.reset();
 	   model.loadModel(reader.result,
 			   {},
-			   function(model){
-			       log("done " + model);
-			       briglContainer.setModel(model, true);
+			   function(){
+			       cur_step = max_step = model.getMaxStep(0);
+			       briglv_container.setModel(model.getMeshs(0, max_step), true);
+			       have_model = true;
 			   },
 			   handleError);
-	   /*
-	   splitLines(reader.result);
-           console.log(reader.result.substring(0, 200));
-	   builder.loadModelByData("uploadedModel.dat", reader.result, {}, function(model){
-	       briglContainer.setModel(model, true);
-	   }, handleError);
-	   */
        };
        reader.readAsText(input.files[0]);       
+   }
+
+   function incStep(delta){
+       console.log("incStep " + delta);
+       
+       cur_step += delta;
+       if(cur_step < 0){
+	   cur_step = 0;
+       }
+       if(cur_step > max_step){
+	   cur_step = max_step;
+       }
+       briglv_container.setModel(model.getMeshs(0, cur_step), true);       
    }
   </script>
 
@@ -74,5 +86,7 @@
     <p>Select A File <input type="file" id="input" onchange="handleFile(event)"></p>
     <p id="log">No Errors</p>
     <div id="container"></div>
+    <p onclick="incStep(1)">up</p>
+    <p onclick="incStep(-1)">down</p>
   </body>
 </html>

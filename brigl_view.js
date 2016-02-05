@@ -11,12 +11,12 @@ var BRIGLV = BRIGLV || {
     REVISION: '1'
 };
 
-function modelLoadGroupsSteps(model, callback, current_group, current_step) {
+function modelLoadGroupsSteps(model, callback, errorCallback, current_group, current_step) {
     BRIGLV.log("loading " + current_group + " " + current_step);
 	
     // Check if we have loaded everything.
     if (current_group < 0){
-	BRIGLV.log("loading complete " + typeof(callback));
+	BRIGLV.log("loading complete");
 	callback(model.groups[0].steps[0].getMesh());
     }
     else {
@@ -47,8 +47,9 @@ function modelLoadGroupsSteps(model, callback, current_group, current_step) {
 					    model.mesh_options,
 					    function(mesh){
 						step.setMesh(mesh);
-						modelLoadGroupsSteps(model, callback, next_group, next_step);
-					    });
+						modelLoadGroupsSteps(model, callback, errorCallback, next_group, next_step);
+					    },
+					    errorCallback);
     }
 }
 
@@ -133,12 +134,51 @@ BRIGLV.Model = function(options){
 BRIGLV.Model.prototype = {
 
     constructor: BRIGLV.Model,
-	
-    loadModel: function(modelData, mesh_options, callback, errorCallback) {
-	this.errorCallback = errorCallback;
-	this.finishedLoadingCallback = callback;
-	this.mesh_options = mesh_options;
 
+    getGroup: function(group_number){
+	
+	// group_number range checking.
+	if (group_number >= this.groups.length){
+	    BRIGLV.log("group number out of range");
+	    group_number = this.groups.length - 1;
+	}
+	if (group_number < 0){
+	    BRIGLV.log("group number out of range");
+	    group_number = 0;
+	}
+	
+	return this.groups[group_number];
+    },
+
+    getMaxStep: function(group_number){
+	return this.getGroup(group_number).getNumberSteps();
+    },
+    
+    getMeshs: function(group_number, step_number){
+	group = this.getGroup(group_number);
+
+	// step_number range checking.
+	if (step_number > group.getNumberSteps()){
+	    BRIGLV.log("step number out of range");
+	    step_number = group.getNumberSteps();
+	}
+	if (step_number < 1){
+	    BRIGLV.log("step number out of range");
+	    step_number = 1;
+	}
+
+	// Create an array with the meshes.
+	meshs = []
+	for (var i = 0; i < step_number; i++){
+	    meshs.push(group.steps[i].getMesh())
+	}
+
+	return meshs;
+    },
+    
+    loadModel: function(modelData, mesh_options, callback, errorCallback) {
+	this.mesh_options = mesh_options;
+	
 	// Read in the model, creating separate objects for each group and step.
 	var lines = modelData.split("\n");
 	for (var i = 0; i < lines.length; i++){
@@ -158,6 +198,7 @@ BRIGLV.Model.prototype = {
 	start_group = this.groups.length - 1;
 	modelLoadGroupsSteps(this,
 			     callback,
+			     errorCallback,
 			     start_group,
 			     this.groups[start_group].getNumberSteps() - 1);
     },
@@ -165,6 +206,44 @@ BRIGLV.Model.prototype = {
     reset: function(){
 	this.groups = [];
     }
+
+}
+
+BRIGLV.Container = BRIGL.BriglContainer;
+
+BRIGLV.Container.prototype.setModel = function(meshs) {
+
+    if(this.mesh){
+	this.scene.remove(this.mesh);
+    }
+
+    //
+    // Create a group with all the meshs. Fortunately this has
+    // enough functionality that BRIGL.Container can use it the
+    // same way as a normal mesh.
+    //
+    this.mesh = new THREE.Object3D();
+    for (var i = 0; i < meshs.length; i++){
+	this.mesh.add(meshs[i]);
+    }
+
+    this.mesh.useQuaternion = true;
+    this.mesh.quaternion.setFromAxisAngle(new THREE.Vector3(1, 0, -0.5).normalize(), 3.34);
+
+    // Place the camera at a right distance to gracefully fill the area.
+    var radius_delta = 0.0;
+    for (var i = 0; i < meshs.length; i++){	
+	var temp = meshs[i].brigl.radius / 180.0; // empirical
+	if (temp > radius_delta){
+	    radius_delta = temp;
+	}
+    }
+    this.camera.position.set(0 * radius_delta, 150 * radius_delta, 400 * radius_delta);
+    this.camera.lookAt(this.scene.position);
+    
+    this.scene.add(this.mesh);
+    
+    this.render();
 }
 
 
