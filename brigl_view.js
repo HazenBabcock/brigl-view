@@ -156,6 +156,15 @@ BRIGLV.Model.prototype = {
 	return this.groups[group_number];
     },
 
+    getGroupNames: function(){
+	group_names = [];
+	for (var i = 0; i < this.groups.length; i++){
+	    group_names.push(this.groups[i].group_name);
+	}
+
+	return group_names;
+    },
+
     getMaxStep: function(group_number){
 	return this.getGroup(group_number).getNumberSteps();
     },
@@ -217,12 +226,12 @@ BRIGLV.Model.prototype = {
 
 BRIGLV.Container = BRIGL.BriglContainer;
 
-BRIGLV.Container.prototype.setModel = function(meshs) {
+BRIGLV.Container.prototype.setModel = function(meshs, reset_view) {
 
-    if(this.mesh){
-	this.scene.remove(this.mesh);
-    }
+    old_mesh = this.mesh;
 
+    console.log("sm " + reset_view);
+    
     //
     // Create a group with all the meshs. Fortunately this has
     // enough functionality that BRIGL.Container can use it the
@@ -234,20 +243,29 @@ BRIGLV.Container.prototype.setModel = function(meshs) {
     }
     
     this.mesh.useQuaternion = true;
-    this.mesh.quaternion.setFromAxisAngle(new THREE.Vector3(1, 0, -0.5).normalize(), 3.34);
+    if (reset_view){
+	this.mesh.quaternion.setFromAxisAngle(new THREE.Vector3(1, 0, -0.5).normalize(), 3.34);
 
-    // Place the camera at a right distance to gracefully fill the area.
-    var radius_delta = 0.0;
-    for (var i = 0; i < meshs.length; i++){	
-	var temp = meshs[i].brigl.radius / 180.0; // empirical
-	if (temp > radius_delta){
-	    radius_delta = temp;
+	// Place the camera at a right distance to gracefully fill the area.
+	var radius_delta = 0.0;
+	for (var i = 0; i < meshs.length; i++){	
+	    var temp = meshs[i].brigl.radius / 180.0; // empirical
+	    if (temp > radius_delta){
+		radius_delta = temp;
+	    }
+	}
+	this.camera.position.set(0 * radius_delta, 150 * radius_delta, 400 * radius_delta);
+	this.camera.lookAt(this.scene.position);
+    }
+    else {
+	if (old_mesh){
+	    this.mesh.position.copy(old_mesh.position);
+	    this.mesh.quaternion.copy(old_mesh.quaternion);
 	}
     }
-    this.camera.position.set(0 * radius_delta, 150 * radius_delta, 400 * radius_delta);
-    this.camera.lookAt(this.scene.position);
     
     this.scene.add(this.mesh);
+    if (old_mesh) this.scene.remove(old_mesh);
     
     this.render();
 }

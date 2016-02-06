@@ -22,10 +22,71 @@
    var briglv_container;
    var cur_step;
    var have_model;
+   var group_number;
    var logarea;
    var max_step;
    var model;
+   var mpd_select;
+
+   function populateMPDSelect(group_names){
+
+       // Clear old options.
+       for (var i = mpd_select.options.length-1; i >= 0; i--){
+	   mpd_select.remove(i)
+       }
+
+       // Add new options.
+       for (var i = 0; i < group_names.length; i++){
+	   var opt = document.createElement('option');
+	   opt.innerHTML = group_names[i];
+	   opt.value = i;
+	   mpd_select.appendChild(opt);
+       }
+   }
    
+   function handleError(msg)
+   {
+       alert("Error: " + msg);
+   }
+
+   function handleFile(event){
+       if (!model) return;
+       
+       var input = event.target;
+       logarea.value = ""
+       
+       var reader = new FileReader();
+       reader.onload = function(){
+	   model.reset();
+	   model.loadModel(reader.result,
+			   {},
+			   function(){
+			       group_number = 0;
+			       cur_step = max_step = model.getMaxStep(group_number);
+			       populateMPDSelect(model.getGroupNames());
+			       briglv_container.setModel(model.getMeshs(group_number, max_step), true);
+			       have_model = true;
+			   },
+			   handleError);
+       };
+       reader.readAsText(input.files[0]);       
+   }
+
+   function incStep(delta){
+       if (!have_model) return;
+       
+       console.log("incStep " + delta);
+       
+       cur_step += delta;
+       if(cur_step < 0){
+	   cur_step = 0;
+       }
+       if(cur_step > max_step){
+	   cur_step = max_step;
+       }
+       briglv_container.setModel(model.getMeshs(group_number, cur_step), false);
+   }
+
    function init(){
        if ( ! Detector.webgl ) { alert("no webgl"); return; }
 
@@ -42,49 +103,23 @@
        BRIGLV.log = function(msg){
   	   logarea.textContent = "BRIGL-View: " + msg;
        }
+
+       mpd_select = document.getElementById("mpd_select");
    }
 
-   function handleError(msg)
-   {
-       alert("Error: " + msg);
-   }
-
-   function handleFile(event){
-       var input = event.target;
-       logarea.value = ""
-       
-       var reader = new FileReader();
-       reader.onload = function(){
-	   model.reset();
-	   model.loadModel(reader.result,
-			   {},
-			   function(){
-			       cur_step = max_step = model.getMaxStep(0);
-			       briglv_container.setModel(model.getMeshs(0, max_step), true);
-			       have_model = true;
-			   },
-			   handleError);
-       };
-       reader.readAsText(input.files[0]);       
-   }
-
-   function incStep(delta){
-       console.log("incStep " + delta);
-       
-       cur_step += delta;
-       if(cur_step < 0){
-	   cur_step = 0;
-       }
-       if(cur_step > max_step){
-	   cur_step = max_step;
-       }
-       briglv_container.setModel(model.getMeshs(0, cur_step), true);       
+   function handleMPDSelect(){
+       if (!have_model) return;
+       group_number = mpd_select.value;
+       console.log("mpd select " + group_number);
+       cur_step = max_step = model.getMaxStep(group_number);
+       briglv_container.setModel(model.getMeshs(group_number, max_step), true);
    }
   </script>
 
   <body onload="init();">
     <p>Select A File <input type="file" id="input" onchange="handleFile(event)"></p>
     <p id="log">No Errors</p>
+    <p id="mpd">MPB model selection:<select id="mpd_select" onchange="handleMPDSelect()"></select></p>
     <div id="container"></div>
     <p onclick="incStep(1)">up</p>
     <p onclick="incStep(-1)">down</p>
