@@ -94,12 +94,17 @@ BRIGLV.Step.prototype = {
     }
 }
 
-
-// A group in the model, every model has at least one.
+/*
+ * A group in the model, every model has at least one.
+ *
+ * Step 0 is the entire group. To display a sub-set of
+ * the group by steps use steps 1..N.
+ */
 BRIGLV.Group = function(name){
+    this.all_steps = new BRIGLV.Step();
     this.cur_step = new BRIGLV.Step();
     this.group_name = name;
-    this.steps = [this.cur_step];
+    this.steps = [this.all_steps, this.cur_step];
 }
 
 BRIGLV.Group.prototype = {
@@ -108,10 +113,11 @@ BRIGLV.Group.prototype = {
 
     addLine: function(line) {
 	if (line.startsWith("0 STEP")){
-	    this.steps.push(this.cur_step);
 	    this.cur_step = new BRIGLV.Step();
+	    this.steps.push(this.cur_step);
 	}
 	else {
+	    this.all_steps.addLine(line);
 	    this.cur_step.addLine(line);
 	}
     },
@@ -162,14 +168,14 @@ BRIGLV.Model.prototype = {
 	    BRIGLV.log("step number out of range");
 	    step_number = group.getNumberSteps();
 	}
-	if (step_number < 1){
+	if (step_number < 2){
 	    BRIGLV.log("step number out of range");
-	    step_number = 1;
+	    step_number = 2;
 	}
 
 	// Create an array with the meshes.
 	meshs = []
-	for (var i = 0; i < step_number; i++){
+	for (var i = 1; i < step_number; i++){
 	    meshs.push(group.steps[i].getMesh())
 	}
 
@@ -226,7 +232,7 @@ BRIGLV.Container.prototype.setModel = function(meshs) {
     for (var i = 0; i < meshs.length; i++){
 	this.mesh.add(meshs[i]);
     }
-
+    
     this.mesh.useQuaternion = true;
     this.mesh.quaternion.setFromAxisAngle(new THREE.Vector3(1, 0, -0.5).normalize(), 3.34);
 
