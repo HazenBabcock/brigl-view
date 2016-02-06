@@ -28,22 +28,6 @@
    var model;
    var mpd_select;
 
-   function populateMPDSelect(group_names){
-
-       // Clear old options.
-       for (var i = mpd_select.options.length-1; i >= 0; i--){
-	   mpd_select.remove(i)
-       }
-
-       // Add new options.
-       for (var i = 0; i < group_names.length; i++){
-	   var opt = document.createElement('option');
-	   opt.innerHTML = group_names[i];
-	   opt.value = i;
-	   mpd_select.appendChild(opt);
-       }
-   }
-   
    function handleError(msg)
    {
        alert("Error: " + msg);
@@ -74,9 +58,7 @@
 
    function incStep(delta){
        if (!have_model) return;
-       
-       console.log("incStep " + delta);
-       
+
        cur_step += delta;
        if(cur_step < 2){
 	   cur_step = 2;
@@ -105,20 +87,44 @@
        }
 
        mpd_select = document.getElementById("mpd_select");
+       document.getElementById("mpd").style.visibility = 'hidden';
    }
 
    function handleMPDSelect(){
        if (!have_model) return;
        group_number = mpd_select.value;
-       console.log("mpd select " + group_number);
        cur_step = max_step = model.getMaxStep(group_number);
        briglv_container.setModel(model.getMeshs(group_number, max_step), true);
    }
+   
+   function populateMPDSelect(group_names){
+
+       // Clear old options.
+       for (var i = mpd_select.options.length-1; i >= 0; i--){
+	   mpd_select.remove(i)
+       }
+
+       // Add new options.
+       for (var i = 0; i < group_names.length; i++){
+	   var opt = document.createElement('option');
+	   opt.innerHTML = group_names[i];
+	   opt.value = i;
+	   mpd_select.appendChild(opt);
+       }
+
+       if (group_names.length > 1){
+	   document.getElementById("mpd").style.visibility = 'visible';
+       }
+       else {
+	   document.getElementById("mpd").style.visibility = 'hidden';
+       }
+   }
+
   </script>
 
   <body onload="init();">
     <p>Select A File <input type="file" id="input" onchange="handleFile(event)"></p>
-    <p id="log">No Errors</p>
+    <p id="log"></p>
     <p id="mpd">MPB model selection:<select id="mpd_select" onchange="handleMPDSelect()"></select></p>
     <div id="container"></div>
     <p onclick="incStep(1)">up</p>
