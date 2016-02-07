@@ -6,51 +6,32 @@
 
   Hazen Babcock 2016
 
+  FIXME:
+    1. If you have a MPD file in which later sub models refer
+       to early sub models this will break.
+
 */
 
 var BRIGLV = BRIGLV || {
     REVISION: '1'
 };
 
-function modelLoadGroupsSteps(model, callback, errorCallback, current_group, current_step) {
-    BRIGLV.log("loading " + current_group + " " + current_step);
-	
-    // Check if we have loaded everything.
-    if (current_group < 0){
-	BRIGLV.log("loading complete");
-	callback(model.groups[0].steps[0].getMesh());
-    }
-    else {
-	// Figure out next group and step.
-	next_group = current_group;
-	next_step = current_step - 1;
-	if (next_step < 0){
-	    next_group -= 1;
-	    if (next_group >= 0){
-		next_step = model.groups[next_group].getNumberSteps() - 1;
-	    }
-	}
-
-	// Get current group and step objects.
-	group = model.groups[current_group];
-	step = group.steps[current_step];
-	if (current_step == 0){
-	    partName = group.group_name;
-	}
-	else {
-	    partName = group.group_name + "_" + current_step;
-	}
-	
-	// Create the mesh for the current group and step using BRIGL.
-	BRIGLV.log("loading " + partName)
-	model.brigl_builder.loadModelByData(partName,
+function briglRender(model, to_render, callback, errorCallback){
+    if (to_render.length > 0){
+	step = to_render.pop();
+	BRIGLV.log("rendering " + step.name);
+	model.brigl_builder.loadModelByData(step.name,
 					    step.data,
 					    model.mesh_options,
 					    function(mesh){
 						step.setMesh(mesh);
-						modelLoadGroupsSteps(model, callback, errorCallback, next_group, next_step);
+						briglRender(model, to_render, callback, errorCallback);
 					    },
 					    errorCallback);
+    }
+    else {
+	BRIGLV.log("loading complete");
+	callback();
     }
 }
 
@@ -59,11 +40,37 @@ BRIGLV.log = function(msg){
     console.info("BV " + msg);
 }
 
-
-// A single step in the model.
-BRIGLV.Step = function(){
+/*
+ * A single part, these are used for
+ * rendering the parts list for each step.
+ */
+BRIGLV.Part = function(){
     this.data = "";
     this.mesh = undefined;
+}
+
+BRIGLV.Part.prototype = {
+
+    constructor: BRIGLV.Part,
+
+    addLine: function(line){
+	this.data = line;
+    },
+
+    setMesh: function(mesh){
+	this.mesh = mesh;
+    }
+}
+
+/*
+ * Usually this is a single step in the model, but it can 
+ * also be an entire group. It contains all the LDraw data 
+ * necessary for BRIGL to render this part of the model.
+ */
+BRIGLV.Step = function(name){
+    this.data = "";
+    this.mesh = undefined;
+    this.name = name;
 }
 
 BRIGLV.Step.prototype = {
@@ -79,8 +86,11 @@ BRIGLV.Step.prototype = {
     },
     
     setMesh: function(mesh){
-	BRIGLV.log("setting mesh");
 	this.mesh = mesh;
+    },
+
+    setName: function(name){
+	this.name = name;
     }
 }
 
@@ -91,8 +101,8 @@ BRIGLV.Step.prototype = {
  * the group by steps use steps 1..N.
  */
 BRIGLV.Group = function(name){
-    this.all_steps = new BRIGLV.Step();
-    this.cur_step = new BRIGLV.Step();
+    this.all_steps = new BRIGLV.Step(name);
+    this.cur_step = new BRIGLV.Step(name + "_0");
     this.group_name = name;
     this.steps = [this.all_steps, this.cur_step];
 }
@@ -103,7 +113,7 @@ BRIGLV.Group.prototype = {
 
     addLine: function(line) {
 	if (line.startsWith("0 STEP")){
-	    this.cur_step = new BRIGLV.Step();
+	    this.cur_step = new BRIGLV.Step(this.group_name + "_" + (this.steps.length - 1));
 	    this.steps.push(this.cur_step);
 	}
 	else {
@@ -118,13 +128,16 @@ BRIGLV.Group.prototype = {
 }
 
 
-// The whole model.
+/*
+ * The whole model.
+ */
 BRIGLV.Model = function(options){
     this.brigl_builder = new BRIGL.Builder("parts/", options);
     this.errorCallback = undefined;
     this.finishedLoadingCallback = undefined;
     this.groups = [];
     this.mesh_options = {};
+    this.to_render = [];
 }
 
 BRIGLV.Model.prototype = {
@@ -175,7 +188,7 @@ BRIGLV.Model.prototype = {
 	// Create an array with the meshes.
 	meshs = []
 	for (var i = 1; i < step_number; i++){
-	    meshs.push(group.steps[i].getMesh())
+	    meshs.push(group.steps[i].getMesh());
 	}
 
 	return meshs;
@@ -199,13 +212,17 @@ BRIGLV.Model.prototype = {
 	    }
 	}
 
-	// Load the model.
-	start_group = this.groups.length - 1;
-	modelLoadGroupsSteps(this,
-			     callback,
-			     errorCallback,
-			     start_group,
-			     this.groups[start_group].getNumberSteps() - 1);
+	// Create a list containing everything that we need BRIGL to render.
+	for (var i = 0; i < this.groups.length; i++){
+	    group = this.groups[i];
+	    for (var j = 0; j < group.getNumberSteps(); j++){
+		this.to_render.push(group.steps[j]);
+	    }
+	}
+
+	// Render it.
+	briglRender(this, this.to_render, callback, errorCallback);
+
     },
 
     reset: function(){
@@ -214,6 +231,11 @@ BRIGLV.Model.prototype = {
 
 }
 
+
+/*
+ * A slightly modified BRIGL.BriglContainer that 
+ * can handle handle multiple meshes.
+ */
 BRIGLV.Container = BRIGL.BriglContainer;
 
 BRIGLV.Container.prototype.setModel = function(meshs, reset_view) {
