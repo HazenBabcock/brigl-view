@@ -5,8 +5,10 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
     <style>
-      body { background-color: #ccccff;	margin: 0px; font-family: Monospace; font-weight: bold; }
-      div  { background-color: #ffffff; border:1px solid black; width:800px; height:600px; }
+     body { background-color: #ccccff;	margin: 0px; font-family: Monospace; font-weight: bold; }
+     div { background-color: #ffffff; border:1px solid black;}
+     .model_div { width:800px; height:600px; }
+     .part_div { width:100px; height:100px; }
     </style>
   </head>
   
@@ -22,8 +24,9 @@
     <p>Select A File <input type="file" id="input" onchange="handleFile(event)"></p>
     <p id="log"></p>
     <p id="mpd">MPB model selection:<select id="mpd_select" onchange="handleMPDSelect()"></select></p>
-    <div id="container"></div>
+    <div class="model_div" id="model"></div>
     <p onclick="incStep(1)">up</p>
     <p onclick="incStep(-1)">down</p>
+    <div class="part_div" id="part"></div>
   </body>
 </html>

@@ -15,6 +15,7 @@ var logarea;
 var max_step;
 var model;
 var mpd_select;
+//var parts_container;
 
 function handleError(msg)
 {
@@ -36,12 +37,24 @@ function handleFile(event){
 			    group_number = 0;
 			    cur_step = max_step = model.getMaxStep(group_number);
 			    populateMPDSelect(model.getGroupNames());
-			    briglv_container.setModel(model.getMeshs(group_number, max_step), true);
+			    handleUpdate(group_number, max_step, true);
 			    have_model = true;
 			},
 			handleError);
     };
     reader.readAsText(input.files[0]);       
+}
+
+function handleUpdate(group_number, step_number, reset_view){
+
+    // Render model.
+    briglv_container.setModel(model.getMeshs(group_number, step_number), reset_view);
+
+    // Render parts used for this step.
+    var parts = model.getParts(group_number, step_number);
+    if (parts.length > 0){
+	BRIGLV.PartContainer(document.getElementById("part"), parts[0][0]);
+    }
 }
 
 function incStep(delta){
@@ -54,7 +67,7 @@ function incStep(delta){
     if(cur_step > max_step){
 	cur_step = max_step;
     }
-    briglv_container.setModel(model.getMeshs(group_number, cur_step), false);
+    handleUpdate(group_number, cur_step, false);
 }
 
 function init(){
@@ -64,7 +77,7 @@ function init(){
     max_step = 0;
     
     model = new BRIGLV.Model();
-    briglv_container = new BRIGLV.Container(document.getElementById("container"));
+    briglv_container = new BRIGLV.Container(document.getElementById("model"));
        
     logarea = document.getElementById("log");
     BRIGL.log = function(msg){
@@ -82,7 +95,7 @@ function handleMPDSelect(){
     if (!have_model) return;
     group_number = mpd_select.value;
     cur_step = max_step = model.getMaxStep(group_number);
-    briglv_container.setModel(model.getMeshs(group_number, max_step), true);
+    handleUpdate(group_number, max_step, true);
 }
 
 function populateMPDSelect(group_names){
