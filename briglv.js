@@ -339,61 +339,102 @@ BRIGLV.Container.prototype.setModel = function(meshs, reset_view) {
 
 
 /*
- * Containers for displaying render of the parts in the parts 
- * list. These are simpler because you can't interact with them.
+ * Container for displaying render of the parts in the parts 
+ * list. This simpler because you can't interact with them.
  */
-BRIGLV.PartContainer = function(container, part_mesh, options) {
+BRIGLV.PartContainer = function(canvas, options) {
+    this.camera = 0;
+    this.renderer = 0;
+    this.scene = 0;
+    this.setup(options ? options : {
+	canvas: canvas,
+        antialias: true
+    });
+};
 
+BRIGLV.PartContainer.prototype = {
+
+    constructor : BRIGLV.PartContainer,
+    
+    /*
+     * This is basically the setModel function.
+     */
+    setPart: function(part_mesh){
+
+	if (this.mesh){
+	    this.scene.remove(this.mesh);
+	}
+
+	this.mesh = part_mesh;
+	
+	part_mesh.useQuaternion = true;
+	part_mesh.quaternion.setFromAxisAngle(new THREE.Vector3(1, 0, -0.5).normalize(), 3.34);
+	part_mesh.geometry.computeBoundingSphere();
+
+	// place the camera at a right distance to gracefully fill the area
+	var radiusDelta = part_mesh.brigl.radius / 180.0; // empirical
+	this.camera.position.set(0 * radiusDelta, 150 * radiusDelta, 400 * radiusDelta);
+	this.camera.lookAt(this.scene.position);
+	this.scene.add(part_mesh);
+
+	// render on the container.
+	/*
+	var width = canvas.clientWidth;
+	var height = canvas.clientHeight;
+
+	if ( canvas.width !== width || canvas.height != height ) {
+	    this.renderer.setSize( width, height, false );
+	}
+
+	// set the viewport
+	var rect = container.getBoundingClientRect();	
+	var width  = rect.right - rect.left;
+	var height = rect.bottom - rect.top;
+	var left   = rect.left;
+	var bottom = renderer.domElement.clientHeight - rect.bottom;
+	renderer.setViewport( left, bottom, width, height );
+	*/
+	this.renderer.render(this.scene, this.camera);
+    },
+    
     /*
      * This was lifted more or less straight out of the
      * setup() function of BRIGL.BriglContainer.
      */
-    
-    // SCENE
-    var scene = new THREE.Scene();
+    setup: function(options) {
+	// SCENE
+	this.scene = new THREE.Scene();
 
-    // CAMERA
-    var SCREEN_WIDTH = container.offsetWidth,
-        SCREEN_HEIGHT = container.offsetHeight;
-    var VIEW_ANGLE = 45,
-        ASPECT = SCREEN_WIDTH / SCREEN_HEIGHT,
-        NEAR = 0.1,
-        FAR = 20000;
-    var camera = new THREE.PerspectiveCamera(VIEW_ANGLE, ASPECT, NEAR, FAR);
+	// CAMERA
+	/*
+	var SCREEN_WIDTH = this.container.offsetWidth,
+            SCREEN_HEIGHT = this.container.offsetHeight;
+	    */
+	var VIEW_ANGLE = 45,
+            ASPECT = 1.0,
+            NEAR = 0.1,
+            FAR = 20000;
+	this.camera = new THREE.PerspectiveCamera(VIEW_ANGLE, ASPECT, NEAR, FAR);
 
-    scene.add(camera);
-    camera.position.set(0, 150, 400);
-    camera.lookAt(scene.position);
+	this.scene.add(this.camera);
+	this.camera.position.set(0, 150, 400);
+	this.camera.lookAt(this.scene.position);
+	
+	// RENDERER
+	this.renderer = new THREE.WebGLRenderer(options);
+	//this.renderer.setSize(100, 100);
 
-    // RENDERER
-    var renderer = new THREE.WebGLRenderer(options);
-    renderer.setSize(SCREEN_WIDTH, SCREEN_HEIGHT);
-    container.appendChild(renderer.domElement);
+	// LIGHT (lighting could be choosen better)
+	var light = new THREE.PointLight(0xffffff);
+	light.position.set(0, 250, 0);
+	this.scene.add(light);
 
-    // LIGHT (lighting could be choosen better)
-    var light = new THREE.PointLight(0xffffff);
-    light.position.set(0, 250, 0);
-    scene.add(light);
-
-    var light = new THREE.DirectionalLight(0xaaaaaa);
-    light.position.set(0, 00, 100);
-    scene.add(light);
-
-    /*
-     * This is basically the setModel function.
-     */
-    part_mesh.useQuaternion = true;
-    part_mesh.quaternion.setFromAxisAngle(new THREE.Vector3(1, 0, -0.5).normalize(), 3.34);
-    part_mesh.geometry.computeBoundingSphere();
-
-    // place the camera at a right distance to gracefully fill the area
-    var radiusDelta = part_mesh.brigl.radius / 180.0; // empirical
-    camera.position.set(0 * radiusDelta, 150 * radiusDelta, 400 * radiusDelta);
-    camera.lookAt(scene.position);
-    scene.add(part_mesh);
-
-    renderer.render(scene, camera);
+	var light = new THREE.DirectionalLight(0xaaaaaa);
+	light.position.set(0, 00, 100);
+	this.scene.add(light);
+    }
 }
+
 
 /*
 

@@ -8,6 +8,7 @@
 
 var builder;
 var briglv_container;
+var briglv_partcontainer;
 var cur_step;
 var have_model;
 var group_number;
@@ -15,7 +16,8 @@ var logarea;
 var max_step;
 var model;
 var mpd_select;
-//var parts_container;
+//var part_display;
+//var webgl_canvas;
 
 function handleError(msg)
 {
@@ -45,16 +47,49 @@ function handleFile(event){
     reader.readAsText(input.files[0]);       
 }
 
+function handleMPDSelect(){
+    if (!have_model) return;
+    group_number = mpd_select.value;
+    cur_step = max_step = model.getMaxStep(group_number);
+    handleUpdate(group_number, max_step, true);
+}
+
 function handleUpdate(group_number, step_number, reset_view){
 
     // Render model.
     briglv_container.setModel(model.getMeshs(group_number, step_number), reset_view);
 
-    // Render parts used for this step.
+    // Render parts.
     var parts = model.getParts(group_number, step_number);
-    if (parts.length > 0){
-	BRIGLV.PartContainer(document.getElementById("part"), parts[0][0]);
+    briglv_partcontainer.setPart(parts[0][0]);
+    
+    var part_display = document.getElementById("part");
+    var part_context = part_display.getContext("2d");
+    var webgl_canvas = document.getElementById("webgl_canvas");
+    part_context.clearRect(0, 0, part_display.width, part_display.height);
+    part_context.drawImage(webgl_canvas, 0, 0);
+    part_context.stroke();
+    console.log("asdf");
+    
+    // Remove any old part renders.
+    /*
+    var parts_display = document.getElementById("parts");
+    while(parts_display.hasChildNodes()) {
+	parts_display.removeChild(parts_display.childNodes[0]);
     }
+    */
+    
+    // Render and add parts used for this step.
+    /*
+    var part_display = document.getElementById("part");
+    var parts = model.getParts(group_number, step_number);
+    for (var i = 0; i < parts.length; i++){
+	briglv_partcontainer.setPart(parts[i][0]);
+	var clone = part_display.cloneNode(true);
+	clone.style.visibility= "visible";
+	parts_display.appendChild(clone);
+    }
+    */
 }
 
 function incStep(delta){
@@ -78,7 +113,16 @@ function init(){
     
     model = new BRIGLV.Model();
     briglv_container = new BRIGLV.Container(document.getElementById("model"));
-       
+
+    //var webgl_canvas = document.getElementById("webgl_canvas");
+    //webgl_canvas.width = 100;
+    //webgl_canvas.height = 100;
+    briglv_partcontainer = new BRIGLV.PartContainer(document.getElementById("webgl_canvas"));
+
+    //part_display = document.getElementById("part");
+    //part_display.width = 110;
+    //part_display.height = 110;
+   
     logarea = document.getElementById("log");
     BRIGL.log = function(msg){
   	logarea.textContent = "BRIGL: " + msg;
@@ -89,13 +133,6 @@ function init(){
     
     mpd_select = document.getElementById("mpd_select");
     document.getElementById("mpd").style.visibility = 'hidden';
-}
-
-function handleMPDSelect(){
-    if (!have_model) return;
-    group_number = mpd_select.value;
-    cur_step = max_step = model.getMaxStep(group_number);
-    handleUpdate(group_number, max_step, true);
 }
 
 function populateMPDSelect(group_names){
