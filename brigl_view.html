@@ -6,10 +6,9 @@
     <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
     <style>
      body { background-color: #ccccff;	margin: 0px; font-family: Monospace; font-weight: bold; }
-     div { background-color: #ffffff; border:1px solid black;}
-     #model { width:800px; height:600px; }
-     #part { width:100px; height: 100px; border:1px solid black;}
-     #webgl_canvas { width:100px; height: 100px; border:1px solid black; visibility: hidden}
+     .col-5 {width: 100%;}
+     .div { background-color: #ffffff; border:1px solid black;}
+     #model { width:800px; height: 600px; border:1px solid black;}
     </style>
   </head>
   
@@ -25,22 +24,17 @@
       <p>Select A File <input type="file" id="input" onchange="handleFile(event)"></p>
       <p id="log"></p>
       <p id="mpd">MPB model selection:<select id="mpd_select" onchange="handleMPDSelect()"></select></p>
-      <div id="model"></div>
-      <div>
+      <div class="div" id="model"></div>
+      <div class="col5 div">
 	  <p onclick="incStep(1)">up</p>
 	  <p onclick="incStep(-1)">down</p>
       </div>
-      <div>
-	  <p>html</p>
+      <div class="col5 div" id="part_display">
       </div>
       <div>
-	  <div>
+	  <div>	  
 	      <canvas id="webgl_canvas"></canvas>
 	  </div>
-	  <div>
-	      <canvas id="part"></canvas>
-	  </div>
       </div>
-      <!-- <div class="parts_display" id="parts"></div> -->
   </body>
 </html>

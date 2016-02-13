@@ -16,8 +16,9 @@ var logarea;
 var max_step;
 var model;
 var mpd_select;
-//var part_display;
-//var webgl_canvas;
+var part_canvases = [];
+var part_display;
+var webgl_canvas;
 
 function handleError(msg)
 {
@@ -61,35 +62,34 @@ function handleUpdate(group_number, step_number, reset_view){
 
     // Render parts.
     var parts = model.getParts(group_number, step_number);
-    briglv_partcontainer.setPart(parts[0][0]);
-    
-    var part_display = document.getElementById("part");
-    var part_context = part_display.getContext("2d");
-    var webgl_canvas = document.getElementById("webgl_canvas");
-    part_context.clearRect(0, 0, part_display.width, part_display.height);
-    part_context.drawImage(webgl_canvas, 0, 0);
-    part_context.stroke();
-    console.log("asdf");
-    
-    // Remove any old part renders.
-    /*
-    var parts_display = document.getElementById("parts");
-    while(parts_display.hasChildNodes()) {
-	parts_display.removeChild(parts_display.childNodes[0]);
+    while (part_canvases.length > parts.length){
+	part_display.removeChild(part_display.firstChild);
+	part_canvases.pop();
     }
-    */
-    
-    // Render and add parts used for this step.
-    /*
-    var part_display = document.getElementById("part");
-    var parts = model.getParts(group_number, step_number);
+    while (part_canvases.length < parts.length){
+	var new_div = document.createElement("div");
+	part_display.appendChild(new_div);
+	var new_canvas = document.createElement("canvas");
+	new_div.appendChild(new_canvas);
+	
+	new_div.style.border = "1px solid black";
+	new_div.style.display = "inline-block";
+	console.log(new_div);
+	new_div.style.border = "1px solid blue";
+	new_canvas.style.width = "100px";
+	new_canvas.style.height = "100px";
+
+	part_canvases.push(new_canvas);
+	console.log(new_canvas);
+    }
+
     for (var i = 0; i < parts.length; i++){
 	briglv_partcontainer.setPart(parts[i][0]);
-	var clone = part_display.cloneNode(true);
-	clone.style.visibility= "visible";
-	parts_display.appendChild(clone);
+	var part_context = part_canvases[i].getContext("2d");
+	part_context.clearRect(0, 0, part_canvases[i].width, part_canvases[i].height);
+	part_context.drawImage(webgl_canvas, 0, 0);
+	part_context.stroke();
     }
-    */
 }
 
 function incStep(delta){
@@ -110,18 +110,18 @@ function init(){
     
     have_model = false;
     max_step = 0;
-    
+
+    // Model rendering.
     model = new BRIGLV.Model();
     briglv_container = new BRIGLV.Container(document.getElementById("model"));
 
-    //var webgl_canvas = document.getElementById("webgl_canvas");
-    //webgl_canvas.width = 100;
-    //webgl_canvas.height = 100;
-    briglv_partcontainer = new BRIGLV.PartContainer(document.getElementById("webgl_canvas"));
+    // Part rendering
+    webgl_canvas = document.getElementById("webgl_canvas");
+    webgl_canvas.style.visibility = "hidden";
+    briglv_partcontainer = new BRIGLV.PartContainer(webgl_canvas);
 
-    //part_display = document.getElementById("part");
-    //part_display.width = 110;
-    //part_display.height = 110;
+    // Part display
+    part_display = document.getElementById("part_display");
    
     logarea = document.getElementById("log");
     BRIGL.log = function(msg){
