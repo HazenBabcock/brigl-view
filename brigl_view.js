@@ -5,6 +5,7 @@
   Hazen Babcock 2016
 
 */
+'use strict';
 
 var builder;
 var briglv_container;
@@ -35,7 +36,8 @@ function handleFile(event){
     reader.onload = function(){
 	model.reset();
 	model.loadModel(reader.result,
-			{},
+			//{ 'dontCenter' : true , 'dontSmooth' : true },
+			{ 'dontCenter' : true },
 			function(){
 			    group_number = 0;
 			    cur_step = max_step = model.getMaxStep(group_number);
@@ -60,8 +62,13 @@ function handleUpdate(group_number, step_number, reset_view){
     // Render model.
     briglv_container.setModel(model.getMeshs(group_number, step_number), reset_view);
 
-    // Render parts.
+    /*
+     * Render parts.
+     */
     var parts = model.getParts(group_number, step_number);
+
+    // Create the right number of canvases for displaying the parts.
+    /*
     while (part_canvases.length > parts.length){
 	part_display.removeChild(part_display.firstChild);
 	part_canvases.pop();
@@ -82,7 +89,9 @@ function handleUpdate(group_number, step_number, reset_view){
 	part_canvases.push(new_canvas);
 	console.log(new_canvas);
     }
-
+    */
+    // Do the actual rendering.
+    /*
     for (var i = 0; i < parts.length; i++){
 	briglv_partcontainer.setPart(parts[i][0]);
 	var part_context = part_canvases[i].getContext("2d");
@@ -90,6 +99,7 @@ function handleUpdate(group_number, step_number, reset_view){
 	part_context.drawImage(webgl_canvas, 0, 0);
 	part_context.stroke();
     }
+    */
 }
 
 function incStep(delta){
@@ -114,11 +124,12 @@ function init(){
     // Model rendering.
     model = new BRIGLV.Model();
     briglv_container = new BRIGLV.Container(document.getElementById("model"));
+    briglv_container.render();
 
     // Part rendering
     webgl_canvas = document.getElementById("webgl_canvas");
     webgl_canvas.style.visibility = "hidden";
-    briglv_partcontainer = new BRIGLV.PartContainer(webgl_canvas);
+    //briglv_partcontainer = new BRIGLV.PartContainer(webgl_canvas);
 
     // Part display
     part_display = document.getElementById("part_display");

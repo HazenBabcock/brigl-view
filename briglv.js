@@ -11,6 +11,7 @@
        to early sub models this will break.
 
 */
+'use strict';
 
 var BRIGLV = BRIGLV || {
     REVISION: '1'
@@ -18,7 +19,7 @@ var BRIGLV = BRIGLV || {
 
 BRIGLV.briglRender = function(model, to_render, callback, errorCallback){
     if (to_render.length > 0){
-	step = to_render.pop();
+	var step = to_render.pop();
 	BRIGLV.log("rendering " + step.name);
 	model.brigl_builder.loadModelByData(step.name,
 					    step.data,
@@ -188,7 +189,7 @@ BRIGLV.Model.prototype = {
     },
     
     getMeshs: function(group_number, step_number){
-	group = this.getGroup(group_number);
+	var group = this.getGroup(group_number);
 
 	// step_number range checking.
 	if (step_number > group.getNumberSteps()){
@@ -210,10 +211,10 @@ BRIGLV.Model.prototype = {
     },
 
     getParts: function(group_number, step_number){
-	step = this.getGroup(group_number).steps[step_number-1];
+	var step = this.getGroup(group_number).steps[step_number-1];
 
 	// Get the parts for the current step.
-	parts = [];
+	var parts = [];
 	var keys = Object.keys(step.parts);
 	for (var i = 0; i < keys.length; i++){
 	    // [part mesh, number of this part used at this step]
@@ -224,9 +225,9 @@ BRIGLV.Model.prototype = {
     
     loadModel: function(modelData, mesh_options, callback, errorCallback) {
 	this.mesh_options = mesh_options;
-	
-	// Read in the model, creating separate objects for each group and step.
+
 	var lines = modelData.split("\n");
+	// Identify all the sub-files.
 	for (var i = 0; i < lines.length; i++){
 	    var li = lines[i].trim();
 	    if (li === '') continue;
@@ -234,6 +235,17 @@ BRIGLV.Model.prototype = {
 	    if (li.startsWith("0 FILE ")){
 		var group_name = li.substring(7).toLowerCase();
 		this.group_names[group_name] = true;
+	    }
+	}
+
+	// Now read in the model, creating separate objects for
+	// each group, step and part.
+	for (var i = 0; i < lines.length; i++){
+	    var li = lines[i].trim();
+	    if (li === '') continue;
+
+	    if (li.startsWith("0 FILE ")){
+		var group_name = li.substring(7).toLowerCase();
 		this.cur_group = new BRIGLV.Group(group_name);
 		this.groups.push(this.cur_group);
 	    }
@@ -245,12 +257,11 @@ BRIGLV.Model.prototype = {
 		    var li_split = li.split(/(\s+)/);
 		    var part_name = li_split.slice(28).join("");
 		    var group_name = part_name.toLowerCase();
-		    console.log("lm " + part_name + " " + group_name);
 
 		    // Check if this part is actually a sub-file.
 		    if (!(group_name in this.group_names)){
-			part_color = li_split[2];
-			part_id = part_name + "_" + part_color;
+			var part_color = li_split[2];
+			var part_id = part_name + "_" + part_color;
 			if (!(part_id in this.ldraw_parts)){
 			    this.ldraw_parts[part_id] = new BRIGLV.Part(part_id, part_name, li_split[2]);
 			}
@@ -265,7 +276,7 @@ BRIGLV.Model.prototype = {
 	 */
 	// 'Steps' in the model.
 	for (var i = 0; i < this.groups.length; i++){
-	    group = this.groups[i];
+	    var group = this.groups[i];
 	    for (var j = 0; j < group.getNumberSteps(); j++){
 		this.to_render.push(group.steps[j]);
 	    }
@@ -297,30 +308,31 @@ BRIGLV.Container = BRIGL.BriglContainer;
 
 BRIGLV.Container.prototype.setModel = function(meshs, reset_view) {
 
-    old_mesh = this.mesh;
+    var old_mesh = this.mesh;
     
     //
     // Create a group with all the meshs. Fortunately this has
     // enough functionality that BRIGL.Container can use it the
     // same way as a normal mesh.
     //
+    var radius_delta = 0.0;
     this.mesh = new THREE.Object3D();
     for (var i = 0; i < meshs.length; i++){
+	meshs[i].geometry.computeBoundingSphere();
+	if (meshs[i].geometry.boundingSphere.radius > radius_delta){
+	    radius_delta = meshs[i].geometry.boundingSphere.radius;
+	}
 	this.mesh.add(meshs[i]);
     }
-    
-    this.mesh.useQuaternion = true;
+
     if (reset_view){
 	this.mesh.quaternion.setFromAxisAngle(new THREE.Vector3(1, 0, -0.5).normalize(), 3.34);
 
-	// Place the camera at a right distance to gracefully fill the area.
-	var radius_delta = 0.0;
-	for (var i = 0; i < meshs.length; i++){	
-	    var temp = meshs[i].brigl.radius / 180.0; // empirical
-	    if (temp > radius_delta){
-		radius_delta = temp;
-	    }
-	}
+	// Calculate a reasonable camera distance.
+	//var box = new THREE.Box3().setFromObject(this.mesh);
+	//var temp = box.getBoundingSphere().radius;
+	//var radius_delta = box.getBoundingSphere().radius / 180.0;
+	radius_delta = radius_delta/180.0;
 	this.camera.position.set(0 * radius_delta, 150 * radius_delta, 400 * radius_delta);
 	this.camera.lookAt(this.scene.position);
     }
@@ -357,7 +369,7 @@ BRIGLV.PartContainer.prototype = {
     constructor : BRIGLV.PartContainer,
     
     /*
-     * This is basically the setModel function.
+     * This is basically the setModel() function of BRIGL.BriglContainer.
      */
     setPart: function(part_mesh){
 
@@ -367,33 +379,21 @@ BRIGLV.PartContainer.prototype = {
 
 	this.mesh = part_mesh;
 	
-	part_mesh.useQuaternion = true;
+	//part_mesh.useQuaternion = true;
 	part_mesh.quaternion.setFromAxisAngle(new THREE.Vector3(1, 0, -0.5).normalize(), 3.34);
-	part_mesh.geometry.computeBoundingSphere();
 
+	part_mesh.geometry.computeBoundingBox();
+	THREE.geometry.center(part_mesh.geometry);
+
+	part_mesh.geometry.computeBoundingSphere();
 	// place the camera at a right distance to gracefully fill the area
-	var radiusDelta = part_mesh.brigl.radius / 180.0; // empirical
-	this.camera.position.set(0 * radiusDelta, 150 * radiusDelta, 400 * radiusDelta);
+	//var radiusDelta = part_mesh.brigl.radius / 180.0; // empirical
+	//this.camera.position.set(0 * radiusDelta, 150 * radiusDelta, 400 * radiusDelta);
+	var radiusDelta = part_mesh.geometry.boundingSphere.radius / 35.0;
+	this.camera.position.set(0 * radiusDelta, 30 * radiusDelta, 80 * radiusDelta);
 	this.camera.lookAt(this.scene.position);
 	this.scene.add(part_mesh);
 
-	// render on the container.
-	/*
-	var width = canvas.clientWidth;
-	var height = canvas.clientHeight;
-
-	if ( canvas.width !== width || canvas.height != height ) {
-	    this.renderer.setSize( width, height, false );
-	}
-
-	// set the viewport
-	var rect = container.getBoundingClientRect();	
-	var width  = rect.right - rect.left;
-	var height = rect.bottom - rect.top;
-	var left   = rect.left;
-	var bottom = renderer.domElement.clientHeight - rect.bottom;
-	renderer.setViewport( left, bottom, width, height );
-	*/
 	this.renderer.render(this.scene, this.camera);
     },
     
@@ -417,7 +417,7 @@ BRIGLV.PartContainer.prototype = {
 	this.camera = new THREE.PerspectiveCamera(VIEW_ANGLE, ASPECT, NEAR, FAR);
 
 	this.scene.add(this.camera);
-	this.camera.position.set(0, 150, 400);
+	this.camera.position.set(0, 30, 80);
 	this.camera.lookAt(this.scene.position);
 	
 	// RENDERER
@@ -430,7 +430,7 @@ BRIGLV.PartContainer.prototype = {
 	this.scene.add(light);
 
 	var light = new THREE.DirectionalLight(0xaaaaaa);
-	light.position.set(0, 00, 100);
+	light.position.set(0, 0, 100);
 	this.scene.add(light);
     }
 }
