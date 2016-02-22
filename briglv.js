@@ -315,23 +315,22 @@ BRIGLV.Container.prototype.setModel = function(meshs, reset_view) {
     // enough functionality that BRIGL.Container can use it the
     // same way as a normal mesh.
     //
-    var radius_delta = 0.0;
     this.mesh = new THREE.Object3D();
     for (var i = 0; i < meshs.length; i++){
-	meshs[i].geometry.computeBoundingSphere();
-	if (meshs[i].geometry.boundingSphere.radius > radius_delta){
-	    radius_delta = meshs[i].geometry.boundingSphere.radius;
-	}
 	this.mesh.add(meshs[i]);
     }
 
     if (reset_view){
-	this.mesh.quaternion.setFromAxisAngle(new THREE.Vector3(1, 0, -0.5).normalize(), 3.34);
+	var radius_delta = 0.0;
 
-	// Calculate a reasonable camera distance.
-	//var box = new THREE.Box3().setFromObject(this.mesh);
-	//var temp = box.getBoundingSphere().radius;
-	//var radius_delta = box.getBoundingSphere().radius / 180.0;
+	for (var i = 0; i < meshs.length; i++){
+	    meshs[i].geometry.computeBoundingSphere();
+	    var radius = meshs[i].geometry.boundingSphere.radius + meshs[i].geometry.boundingSphere.center.length();
+	    if (radius > radius_delta){
+		radius_delta = radius;
+	    }
+	}
+	this.mesh.quaternion.setFromAxisAngle(new THREE.Vector3(1, 0, -0.5).normalize(), 3.34);
 	radius_delta = radius_delta/180.0;
 	this.camera.position.set(0 * radius_delta, 150 * radius_delta, 400 * radius_delta);
 	this.camera.lookAt(this.scene.position);
