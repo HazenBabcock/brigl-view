@@ -370,7 +370,7 @@ BRIGLV.PartContainer.prototype = {
     /*
      * This is basically the setModel() function of BRIGL.BriglContainer.
      */
-    setPart: function(part_mesh){
+    setPart: function(part_mesh, orientation){
 
 	if (this.mesh){
 	    this.scene.remove(this.mesh);
@@ -378,16 +378,17 @@ BRIGLV.PartContainer.prototype = {
 
 	this.mesh = part_mesh;
 	
-	//part_mesh.useQuaternion = true;
-	part_mesh.quaternion.setFromAxisAngle(new THREE.Vector3(1, 0, -0.5).normalize(), 3.34);
+	part_mesh.quaternion.setFromAxisAngle(orientation.normalize(), 3.34);
 
-	part_mesh.geometry.computeBoundingBox();
-	THREE.geometry.center(part_mesh.geometry);
-
-	part_mesh.geometry.computeBoundingSphere();
-	// place the camera at a right distance to gracefully fill the area
-	//var radiusDelta = part_mesh.brigl.radius / 180.0; // empirical
-	//this.camera.position.set(0 * radiusDelta, 150 * radiusDelta, 400 * radiusDelta);
+	// Center part.
+	if (!part_mesh.centered){
+	    part_mesh.geometry.computeBoundingSphere();
+	    var offset = part_mesh.geometry.boundingSphere.center;
+	    part_mesh.geometry.translate(-offset.x, -offset.y, -offset.z);
+	    part_mesh.centered = true;
+	}
+	
+	// Place the camera at a right distance to gracefully fill the area.
 	var radiusDelta = part_mesh.geometry.boundingSphere.radius / 35.0;
 	this.camera.position.set(0 * radiusDelta, 30 * radiusDelta, 80 * radiusDelta);
 	this.camera.lookAt(this.scene.position);
@@ -405,10 +406,6 @@ BRIGLV.PartContainer.prototype = {
 	this.scene = new THREE.Scene();
 
 	// CAMERA
-	/*
-	var SCREEN_WIDTH = this.container.offsetWidth,
-            SCREEN_HEIGHT = this.container.offsetHeight;
-	    */
 	var VIEW_ANGLE = 45,
             ASPECT = 1.0,
             NEAR = 0.1,
@@ -421,6 +418,7 @@ BRIGLV.PartContainer.prototype = {
 	
 	// RENDERER
 	this.renderer = new THREE.WebGLRenderer(options);
+	this.renderer.setClearColor( 0xffffff, 1 );
 	//this.renderer.setSize(100, 100);
 
 	// LIGHT (lighting could be choosen better)

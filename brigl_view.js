@@ -68,38 +68,55 @@ function handleUpdate(group_number, step_number, reset_view){
     var parts = model.getParts(group_number, step_number);
 
     // Create the right number of canvases for displaying the parts.
-    /*
-    while (part_canvases.length > parts.length){
-	part_display.removeChild(part_display.firstChild);
+    while (part_canvases.length > (2*parts.length)){
+	part_display.removeChild(part_display.lastChild);
+	part_canvases.pop();
 	part_canvases.pop();
     }
-    while (part_canvases.length < parts.length){
+    while (part_canvases.length < (2*parts.length)){
 	var new_div = document.createElement("div");
 	part_display.appendChild(new_div);
-	var new_canvas = document.createElement("canvas");
-	new_div.appendChild(new_canvas);
-	
+
 	new_div.style.border = "1px solid black";
 	new_div.style.display = "inline-block";
-	console.log(new_div);
 	new_div.style.border = "1px solid blue";
-	new_canvas.style.width = "100px";
-	new_canvas.style.height = "100px";
 
-	part_canvases.push(new_canvas);
-	console.log(new_canvas);
+	for (var i = 0; i < 2; i++){
+	    var new_canvas = document.createElement("canvas");
+	    new_div.appendChild(new_canvas);
+	    new_canvas.style.width = "200px";
+	    new_canvas.style.height = "200px";
+	    part_canvases.push(new_canvas);
+	}
     }
-    */
+    
     // Do the actual rendering.
-    /*
     for (var i = 0; i < parts.length; i++){
-	briglv_partcontainer.setPart(parts[i][0]);
-	var part_context = part_canvases[i].getContext("2d");
-	part_context.clearRect(0, 0, part_canvases[i].width, part_canvases[i].height);
+
+	// Get first canvas and clear.
+	var part_context = part_canvases[2*i].getContext("2d");
+	part_context.clearRect(0, 0, part_canvases[2*i].width, part_canvases[2*i].height);
+
+	// Draw first orientation.
+	var ori = new THREE.Vector3(1, 0, -0.5);
+	briglv_partcontainer.setPart(parts[i][0], ori);
 	part_context.drawImage(webgl_canvas, 0, 0);
+
+	// Add number of this type of part.
+	part_context.font="30px Georgia";
+	part_context.fillText(parts[i][1] + "x", 10, 30);
+
+	// Get second canvas and clear.
+	var part_context = part_canvases[2*i+1].getContext("2d");
+	part_context.clearRect(0, 0, part_canvases[2*i+1].width, part_canvases[2*i+1].height);
+	
+	// Draw second orientation.
+	var ori = new THREE.Vector3(-0.5, 0, 1);
+	briglv_partcontainer.setPart(parts[i][0], ori);
+	part_context.drawImage(webgl_canvas, 0, 0);
+
 	part_context.stroke();
     }
-    */
 }
 
 function incStep(delta){
@@ -129,7 +146,7 @@ function init(){
     // Part rendering
     webgl_canvas = document.getElementById("webgl_canvas");
     webgl_canvas.style.visibility = "hidden";
-    //briglv_partcontainer = new BRIGLV.PartContainer(webgl_canvas);
+    briglv_partcontainer = new BRIGLV.PartContainer(webgl_canvas);
 
     // Part display
     part_display = document.getElementById("part_display");
