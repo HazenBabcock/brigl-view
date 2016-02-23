@@ -389,7 +389,7 @@ BRIGLV.PartContainer.prototype = {
 	}
 	
 	// Place the camera at a right distance to gracefully fill the area.
-	var radiusDelta = part_mesh.geometry.boundingSphere.radius / 35.0;
+	var radiusDelta = part_mesh.geometry.boundingSphere.radius / 25.0;
 	this.camera.position.set(0 * radiusDelta, 30 * radiusDelta, 80 * radiusDelta);
 	this.camera.lookAt(this.scene.position);
 	this.scene.add(part_mesh);
