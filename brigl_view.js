@@ -19,6 +19,7 @@ var model;
 var mpd_select;
 var part_canvases = [];
 var part_display;
+var step_text_display;
 var webgl_canvas;
 
 function handleError(msg)
@@ -67,13 +68,20 @@ function handleUpdate(group_number, step_number, reset_view){
      */
     var parts = model.getParts(group_number, step_number);
 
+    // Don't display more than 20 parts per step under the
+    // assumption that this means the model has no steps.
+    var parts_length = parts.length;
+    if (parts_length > 20){
+	parts_length = 20;
+    }
+    
     // Create the right number of canvases for displaying the parts.
-    while (part_canvases.length > (2*parts.length)){
+    while (part_canvases.length > (2*parts_length)){
 	part_display.removeChild(part_display.lastChild);
 	part_canvases.pop();
 	part_canvases.pop();
     }
-    while (part_canvases.length < (2*parts.length)){
+    while (part_canvases.length < (2*parts_length)){
 	var new_div = document.createElement("div");
 	part_display.appendChild(new_div);
 
@@ -91,14 +99,14 @@ function handleUpdate(group_number, step_number, reset_view){
     }
     
     // Do the actual rendering.
-    for (var i = 0; i < parts.length; i++){
+    for (var i = 0; i < parts_length; i++){
 
 	// Get first canvas and clear.
 	var part_context = part_canvases[2*i].getContext("2d");
 	part_context.clearRect(0, 0, part_canvases[2*i].width, part_canvases[2*i].height);
 
 	// Draw first orientation.
-	var ori = new THREE.Vector3(1, 0, -0.5);
+	var ori = new THREE.Vector3(1, 0, 0);
 	briglv_partcontainer.setPart(parts[i][0], ori);
 	part_context.drawImage(webgl_canvas, 0, 0);
 
@@ -111,12 +119,15 @@ function handleUpdate(group_number, step_number, reset_view){
 	part_context.clearRect(0, 0, part_canvases[2*i+1].width, part_canvases[2*i+1].height);
 	
 	// Draw second orientation.
-	var ori = new THREE.Vector3(-0.5, 0, 1);
+	var ori = new THREE.Vector3(0, 1, 0);
 	briglv_partcontainer.setPart(parts[i][0], ori);
 	part_context.drawImage(webgl_canvas, 0, 0);
 
 	part_context.stroke();
     }
+
+    // Update part number text.
+    step_text_display.textContent = "Showing " + (step_number - 1)  + " of " + (max_step - 1) + " steps"
 }
 
 function incStep(delta){
@@ -150,6 +161,9 @@ function init(){
 
     // Part display
     part_display = document.getElementById("part_display");
+
+    // Step text
+    step_text_display = document.getElementById("current_step");
    
     logarea = document.getElementById("log");
     BRIGL.log = function(msg){
