@@ -6,10 +6,6 @@
 
   Hazen Babcock 2016
 
-  FIXME:
-    1. If you have a MPD file in which later sub models refer
-       to early sub models this will break.
-
 */
 'use strict';
 
@@ -113,6 +109,7 @@ BRIGLV.Step.prototype = {
 BRIGLV.Group = function(name){
     this.all_steps = new BRIGLV.Step(name);
     this.cur_step = new BRIGLV.Step(name + "_0");
+    this.depends = [];
     this.group_name = name;
     this.steps = [this.all_steps, this.cur_step];
 }
@@ -267,16 +264,56 @@ BRIGLV.Model.prototype = {
 			}
 			this.cur_group.addPart(this.ldraw_parts[part_id]);
 		    }
+		    else {
+			this.cur_group.depends.push(group_name);
+		    }
 		}
 	    }
 	}
 
 	/*
+	 * Sort groups by dependence so that they get fed to BRIGL in
+	 * the right order.
+	 */
+	var temp_groups = [];
+	for (var i = 0; i < this.groups.length; i++){
+	    temp_groups.push(this.groups[i]);
+	}
+	
+	var brigl_order = [];
+	while (brigl_order.length < this.groups.length){
+	    for (var i = 0; i < temp_groups.length; i++){
+		var group = temp_groups[i];
+		var dependencies_found = true;
+		var j = 0;
+		while (j < group.depends.length && dependencies_found){
+		    var k = 0;
+		    while (k < brigl_order.length){
+			if (group.depends[j] == brigl_order[k].group_name){
+			    k = brigl_order.length + 1;
+			}
+			k++;
+		    }
+		    if (k == brigl_order.length){
+			dependencies_found = false;
+		    }
+		    j++;
+		}
+		if (dependencies_found){
+		    brigl_order.push(group);
+		}
+	    }
+	}
+	
+	/*
 	 * Create a list containing everything that we need BRIGL to render.
+	 * These are in the opposite order from which they will be rendered
+	 * by BRIGL, so later groups should not have dependencies on
+	 * earlier groups.
 	 */
 	// 'Steps' in the model.
-	for (var i = 0; i < this.groups.length; i++){
-	    var group = this.groups[i];
+	for (var i = (brigl_order.length - 1); i >= 0; i--){
+	    var group = brigl_order[i];
 	    for (var j = 0; j < group.getNumberSteps(); j++){
 		this.to_render.push(group.steps[j]);
 	    }
@@ -378,7 +415,7 @@ BRIGLV.PartContainer.prototype = {
 
 	this.mesh = part_mesh;
 	
-	part_mesh.quaternion.setFromAxisAngle(orientation.normalize(), 3.34);
+	part_mesh.quaternion.setFromAxisAngle(orientation.normalize(), Math.PI / 2);
 
 	// Center part.
 	if (!part_mesh.centered){
@@ -390,7 +427,7 @@ BRIGLV.PartContainer.prototype = {
 	
 	// Place the camera at a right distance to gracefully fill the area.
 	var radiusDelta = part_mesh.geometry.boundingSphere.radius / 25.0;
-	this.camera.position.set(0 * radiusDelta, 30 * radiusDelta, 80 * radiusDelta);
+	this.camera.position.set(0, 0, 80 * radiusDelta);
 	this.camera.lookAt(this.scene.position);
 	this.scene.add(part_mesh);
 
@@ -429,6 +466,12 @@ BRIGLV.PartContainer.prototype = {
 	var light = new THREE.DirectionalLight(0xaaaaaa);
 	light.position.set(0, 0, 100);
 	this.scene.add(light);
+
+	/*
+	var light = new THREE.DirectionalLight(0xffffff);
+	light.position.set(0, 0, 100);
+	this.scene.add(light);	
+	*/
     }
 }
 
