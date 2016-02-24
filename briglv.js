@@ -282,7 +282,7 @@ BRIGLV.Model.prototype = {
 	
 	var brigl_order = [];
 	while (brigl_order.length < this.groups.length){
-	    for (var i = 0; i < temp_groups.length; i++){
+	    for (var i = (temp_groups.length - 1); i >= 0; i--){
 		var group = temp_groups[i];
 		var dependencies_found = true;
 		var j = 0;
@@ -301,6 +301,7 @@ BRIGLV.Model.prototype = {
 		}
 		if (dependencies_found){
 		    brigl_order.push(group);
+		    temp_groups.splice(i,1);
 		}
 	    }
 	}
@@ -314,6 +315,7 @@ BRIGLV.Model.prototype = {
 	// 'Steps' in the model.
 	for (var i = (brigl_order.length - 1); i >= 0; i--){
 	    var group = brigl_order[i];
+	    console.log(group.group_name);
 	    for (var j = 0; j < group.getNumberSteps(); j++){
 		this.to_render.push(group.steps[j]);
 	    }
