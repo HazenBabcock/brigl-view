@@ -37,8 +37,6 @@ function handleFile(event){
     reader.onload = function(){
 	model.reset();
 	model.loadModel(reader.result,
-			//{ 'dontCenter' : true , 'dontSmooth' : true },
-			{ 'dontCenter' : true },
 			function(){
 			    group_number = 0;
 			    cur_step = max_step = model.getMaxStep(group_number);
@@ -87,13 +85,13 @@ function handleUpdate(group_number, step_number, reset_view){
 
 	new_div.style.border = "1px solid black";
 	new_div.style.display = "inline-block";
-	new_div.style.border = "1px solid blue";
 
 	for (var i = 0; i < 2; i++){
 	    var new_canvas = document.createElement("canvas");
 	    new_div.appendChild(new_canvas);
 	    new_canvas.style.width = "200px";
 	    new_canvas.style.height = "200px";
+	    new_canvas.style.padding = "5px";
 	    part_canvases.push(new_canvas);
 	}
     }
@@ -119,10 +117,10 @@ function handleUpdate(group_number, step_number, reset_view){
 	part_context.clearRect(0, 0, part_canvases[2*i+1].width, part_canvases[2*i+1].height);
 	
 	// Draw second orientation.
-	var ori = new THREE.Vector3(0, 1, 0);
+	var ori = new THREE.Vector3(0, 0, 1);
 	briglv_partcontainer.setPart(parts[i][0], ori);
 	part_context.drawImage(webgl_canvas, 0, 0);
-
+	
 	part_context.stroke();
     }
 

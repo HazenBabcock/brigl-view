@@ -17,9 +17,10 @@ BRIGLV.briglRender = function(model, to_render, callback, errorCallback){
     if (to_render.length > 0){
 	var step = to_render.pop();
 	BRIGLV.log("rendering " + step.name);
+	console.log("rendering " + step.name);
 	model.brigl_builder.loadModelByData(step.name,
 					    step.data,
-					    model.mesh_options,
+					    step.mesh_options,
 					    function(mesh){
 						step.setMesh(mesh);
 						BRIGLV.briglRender(model, to_render, callback, errorCallback);
@@ -27,6 +28,7 @@ BRIGLV.briglRender = function(model, to_render, callback, errorCallback){
 					    errorCallback);
     }
     else {
+	console.log("loading complete");
 	BRIGLV.log("loading complete");
 	callback();
     }
@@ -46,6 +48,7 @@ BRIGLV.Part = function(part_id, part_name, part_color){
     this.data = "1 " + part_color + " 0 0 0 1 0 0 0 1 0 0 0 1 " + part_name;
     this.id = part_id;
     this.mesh = undefined;
+    this.mesh_options = { drawLines : true };
     this.name = "bv" + part_name;
 }
 
@@ -66,6 +69,7 @@ BRIGLV.Part.prototype = {
 BRIGLV.Step = function(name){
     this.data = "";
     this.mesh = undefined;
+    this.mesh_options = { dontCenter : true };
     this.name = name;
     this.parts = {};
 }
@@ -220,8 +224,7 @@ BRIGLV.Model.prototype = {
 	return parts;
     },
     
-    loadModel: function(modelData, mesh_options, callback, errorCallback) {
-	this.mesh_options = mesh_options;
+    loadModel: function(modelData, callback, errorCallback) {
 
 	var lines = modelData.split("\n");
 	// Identify all the sub-files.
@@ -394,6 +397,8 @@ BRIGLV.Container.prototype.setModel = function(meshs, reset_view) {
  */
 BRIGLV.PartContainer = function(canvas, options) {
     this.camera = 0;
+    this.grid1 = 0;
+    this.grid2 = 0;
     this.renderer = 0;
     this.scene = 0;
     this.setup(options ? options : {
@@ -417,22 +422,42 @@ BRIGLV.PartContainer.prototype = {
 
 	this.mesh = part_mesh;
 	
-	part_mesh.quaternion.setFromAxisAngle(orientation.normalize(), Math.PI / 2);
+	part_mesh.geometry.computeBoundingBox();
 
-	// Center part.
-	if (!part_mesh.centered){
-	    part_mesh.geometry.computeBoundingSphere();
-	    var offset = part_mesh.geometry.boundingSphere.center;
-	    part_mesh.geometry.translate(-offset.x, -offset.y, -offset.z);
-	    part_mesh.centered = true;
-	}
+	// Rotate part.
+	part_mesh.quaternion.setFromAxisAngle(orientation.normalize(), Math.PI / 2);
 	
-	// Place the camera at a right distance to gracefully fill the area.
-	var radiusDelta = part_mesh.geometry.boundingSphere.radius / 25.0;
-	this.camera.position.set(0, 0, 80 * radiusDelta);
-	this.camera.lookAt(this.scene.position);
+	// Determine a good FOV for the camera.
+	var box_max = part_mesh.geometry.boundingBox.max;
+
+	var max_dim = box_max.x;
+	if (box_max.y > max_dim){
+	    max_dim = box_max.y;
+	}
+	if (box_max.z > max_dim){
+	    max_dim = box_max.z;
+	}
+	max_dim = 1.3 * max_dim;
+	
+	this.camera.left = -max_dim;
+	this.camera.right = max_dim;
+	this.camera.top = max_dim;
+	this.camera.bottom = -max_dim;
+	this.camera.updateProjectionMatrix();
+
+	// Add mesh to scene.
 	this.scene.add(part_mesh);
 
+	// Add appropriate grid based on part size.
+	if (max_dim > 100){
+	    this.scene.remove(this.grid1);
+	    this.scene.add(this.grid2);
+	}
+	else {
+	    this.scene.remove(this.grid2);
+	    this.scene.add(this.grid1);
+	}
+	
 	this.renderer.render(this.scene, this.camera);
     },
     
@@ -441,24 +466,61 @@ BRIGLV.PartContainer.prototype = {
      * setup() function of BRIGL.BriglContainer.
      */
     setup: function(options) {
+	/*
+	 * GRID
+	 */
+	this.grid1 = new THREE.Object3D();
+	this.grid2 = new THREE.Object3D();
+	var grid_material = new THREE.LineBasicMaterial({ color: 0x080808 });
+
+	// X lines
+	for (var x = -400; x <= 400; x += 20){
+	    var geometry = new THREE.Geometry();
+	    geometry.vertices.push(new THREE.Vector3(x, -1000, 0));
+	    geometry.vertices.push(new THREE.Vector3(x,  1000, 0));
+	    var line = new THREE.Line(geometry, grid_material);
+	    this.grid1.add(line);
+	}
+
+	for (var x = -400; x <= 400; x += 40){
+	    var geometry = new THREE.Geometry();
+	    geometry.vertices.push(new THREE.Vector3(x, -1000, 0));
+	    geometry.vertices.push(new THREE.Vector3(x,  1000, 0));
+	    var line = new THREE.Line(geometry, grid_material);
+	    this.grid2.add(line);
+	}
+
+	// Y lines
+	for (var y = -400; y <= 400; y += 20){
+	    var geometry = new THREE.Geometry();
+	    geometry.vertices.push(new THREE.Vector3(-1000, y, 0));
+	    geometry.vertices.push(new THREE.Vector3( 1000, y, 0));
+	    var line = new THREE.Line(geometry, grid_material);
+	    this.grid1.add(line);
+	}
+
+	for (var y = -400; y <= 400; y += 40){
+	    var geometry = new THREE.Geometry();
+	    geometry.vertices.push(new THREE.Vector3(-1000, y, 0));
+	    geometry.vertices.push(new THREE.Vector3( 1000, y, 0));
+	    var line = new THREE.Line(geometry, grid_material);
+	    this.grid2.add(line);
+	}
+	
 	// SCENE
 	this.scene = new THREE.Scene();
+	this.scene.add(this.grid1);
 
 	// CAMERA
-	var VIEW_ANGLE = 45,
-            ASPECT = 1.0,
-            NEAR = 0.1,
-            FAR = 20000;
-	this.camera = new THREE.PerspectiveCamera(VIEW_ANGLE, ASPECT, NEAR, FAR);
+	this.camera = new THREE.OrthographicCamera(-100.0, 100, 100.0, -100.0, -1000, 1000);
 
 	this.scene.add(this.camera);
-	this.camera.position.set(0, 30, 80);
+	this.camera.position.set(0, 0, 200);
 	this.camera.lookAt(this.scene.position);
 	
 	// RENDERER
 	this.renderer = new THREE.WebGLRenderer(options);
 	this.renderer.setClearColor( 0xffffff, 1 );
-	//this.renderer.setSize(100, 100);
 
 	// LIGHT (lighting could be choosen better)
 	var light = new THREE.PointLight(0xffffff);
@@ -471,8 +533,12 @@ BRIGLV.PartContainer.prototype = {
 
 	/*
 	var light = new THREE.DirectionalLight(0xffffff);
-	light.position.set(0, 0, 100);
-	this.scene.add(light);	
+	light.position.set(0, 0, 1000);
+	this.scene.add(light);
+
+	var light = new THREE.DirectionalLight(0xffffff);
+	light.position.set(0, 0, -1000);
+	this.scene.add(light);
 	*/
     }
 }
