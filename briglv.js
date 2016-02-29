@@ -449,7 +449,7 @@ BRIGLV.PartContainer.prototype = {
 	this.scene.add(part_mesh);
 
 	// Add appropriate grid based on part size.
-	if (max_dim > 100){
+	if (max_dim > 200){
 	    this.scene.remove(this.grid1);
 	    this.scene.add(this.grid2);
 	}
