@@ -74,19 +74,20 @@ function handleUpdate(group_number, step_number, reset_view){
     }
     
     // Create the right number of canvases for displaying the parts.
-    while (part_canvases.length > (2*parts_length)){
+    while (part_canvases.length > (3*parts_length)){
 	part_display.removeChild(part_display.lastChild);
 	part_canvases.pop();
 	part_canvases.pop();
+	part_canvases.pop();	
     }
-    while (part_canvases.length < (2*parts_length)){
+    while (part_canvases.length < (3*parts_length)){
 	var new_div = document.createElement("div");
 	part_display.appendChild(new_div);
 
 	new_div.style.border = "1px solid black";
 	new_div.style.display = "inline-block";
 
-	for (var i = 0; i < 2; i++){
+	for (var i = 0; i < 3; i++){
 	    var new_canvas = document.createElement("canvas");
 	    new_div.appendChild(new_canvas);
 	    new_canvas.style.width = "200px";
@@ -100,7 +101,7 @@ function handleUpdate(group_number, step_number, reset_view){
     for (var i = 0; i < parts_length; i++){
 
 	// Get first canvas and clear.
-	var part_context = part_canvases[2*i].getContext("2d");
+	var part_context = part_canvases[3*i].getContext("2d");
 	part_context.clearRect(0, 0, part_canvases[2*i].width, part_canvases[2*i].height);
 
 	// Draw first orientation.
@@ -113,14 +114,23 @@ function handleUpdate(group_number, step_number, reset_view){
 	part_context.fillText(parts[i][1] + "x", 10, 30);
 
 	// Get second canvas and clear.
-	var part_context = part_canvases[2*i+1].getContext("2d");
+	var part_context = part_canvases[3*i+1].getContext("2d");
 	part_context.clearRect(0, 0, part_canvases[2*i+1].width, part_canvases[2*i+1].height);
 	
 	// Draw second orientation.
+	var ori = new THREE.Vector3(0, 1, 0);
+	briglv_partcontainer.setPart(parts[i][0], ori);
+	part_context.drawImage(webgl_canvas, 0, 0);
+
+	// Get third canvas and clear.
+	var part_context = part_canvases[3*i+2].getContext("2d");
+	part_context.clearRect(0, 0, part_canvases[2*i+1].width, part_canvases[2*i+1].height);
+	
+	// Draw third orientation.
 	var ori = new THREE.Vector3(0, 0, 1);
 	briglv_partcontainer.setPart(parts[i][0], ori);
 	part_context.drawImage(webgl_canvas, 0, 0);
-	
+		
 	part_context.stroke();
     }
 
